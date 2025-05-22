@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Ticket</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .booking-container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        .step-container {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        .step-container.collapsed {
+            display: none;
+        }
+        .selection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .selection-item {
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .selection-item:hover {
+            border-color: #0d6efd;
+            background-color: #f1f8ff;
+        }
+        .selection-item.selected {
+            border-color: #0d6efd;
+            background-color: #e7f1ff;
+            font-weight: bold;
+        }
+        .step-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .back-btn {
+            font-size: 14px;
+            cursor: pointer;
+            color: #0d6efd;
+        }
+        .continue-btn {
+            margin-top: 20px;
+        }
+        .date-picker {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="booking-container">
+            <h2 class="text-center mb-4">Book Your Ticket</h2>
+            <form id="booking-form" action="" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="selected_city" value="{{ selected_city_id }}">
+                <input type="hidden" id="theatre-input" name="theatre" value="">
+                <input type="hidden" id="event-input" name="event" value="">
+                <input type="hidden" id="date-input" name="date" value="">
+                <input type="hidden" id="show-input" name="show" value="">
+                <input type="hidden" id="tier-input" name="tier" value="">
+                <input type="hidden" id="seat-input" name="seat" value="">
+                <div id="theatre-step" class="step-container">
+                    <div class="step-header">
+                        <h5>Select Theatre:</h5>
+                    </div>
+                    <div id="theatre-container" class="selection-grid">
+                        {% for theatre in theatres %}
+                            <div class="selection-item theatre-item" data-id="{{ theatre.id }}">
+                                {{ theatre.theatre_name }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div id="event-step" class="step-container collapsed">
+                    <div class="step-header">
+                        <h5>Select Event:</h5>
+                        <span class="back-btn" data-target="theatre-step">Back to Theatres</span>
+                    </div>
+                    <div id="event-container" class="selection-grid"></div>
+                </div>
+                <div id="date-step" class="step-container collapsed">
+                    <div class="step-header">
+                        <h5>Select Date:</h5>
+                        <span class="back-btn" data-target="event-step">Back to Events</span>
+                    </div>
+                    <div class="date-picker">
+                        <input type="date" id="date-picker-input" class="form-control" required>
+                    </div>
+                    <button type="button" id="date-continue" class="btn btn-primary w-100 continue-btn">Continue</button>
+                </div>
+                <div id="show-step" class="step-container collapsed">
+                    <div class="step-header">
+                        <h5>Select Show:</h5>
+                        <span class="back-btn" data-target="date-step">Back to Date</span>
+                    </div>
+                    <div id="show-container" class="selection-grid"></div>
+                </div>
+                <div id="tier-step" class="step-container collapsed">
+                    <div class="step-header">
+                        <h5>Select Tier:</h5>
+                        <span class="back-btn" data-target="show-step">Back to Shows</span>
+                    </div>
+                    <div id="tier-container" class="selection-grid"></div>
+                </div>
+                <div id="seat-step" class="step-container collapsed">
+                    <div class="step-header">
+                        <h5>Select Seat:</h5>
+                        <span class="back-btn" data-target="tier-step">Back to Tiers</span>
+                    </div>
+                    <div id="seat-container" class="selection-grid"></div>
+                    <button type="submit" id="book-now" class="btn btn-primary w-100 mt-4">Book Now</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const theatreInput = document.getElementById("theatre-input");
+            const eventInput = document.getElementById("event-input");
+            const dateInput = document.getElementById("date-input");
+            const showInput = document.getElementById("show-input");
+            const tierInput = document.getElementById("tier-input");
+            const seatInput = document.getElementById("seat-input");
+            const datePicker = document.getElementById("date-picker-input");
+            const theatreStep = document.getElementById("theatre-step");
+            const eventStep = document.getElementById("event-step");
+            const dateStep = document.getElementById("date-step");
+            const showStep = document.getElementById("show-step");
+            const tierStep = document.getElementById("tier-step");
+            const seatStep = document.getElementById("seat-step");
+            const theatreContainer = document.getElementById("theatre-container");
+            const eventContainer = document.getElementById("event-container");
+            const showContainer = document.getElementById("show-container");
+            const tierContainer = document.getElementById("tier-container");
+            const seatContainer = document.getElementById("seat-container");
+            theatreContainer.addEventListener("click", function(e) {
+                if (e.target.classList.contains("theatre-item")) {
+                    document.querySelectorAll(".theatre-item.selected").forEach(item => {
+                        item.classList.remove("selected");
+                    });
+                    e.target.classList.add("selected");
+                    const theatreId = e.target.dataset.id;
+                    theatreInput.value = theatreId;
+                    theatreStep.classList.add("collapsed");
+                    eventStep.classList.remove("collapsed");
+                    fetchEvents(theatreId);
+                }
+            });
+            function fetchEvents(theatreId) {
+                fetch(`/book/get-events/?theatre_id=${theatreId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        eventContainer.innerHTML = '';
+                        data.events.forEach(event => {
+                            eventContainer.innerHTML += `
+                                <div class="selection-item event-item" data-id="${event.id}">
+                                    ${event.name}
+                                </div>
+                            `;
+                        });
+                    });
+            }
+            eventContainer.addEventListener("click", function(e) {
+                if (e.target.classList.contains("event-item")) {
+                    document.querySelectorAll(".event-item.selected").forEach(item => {
+                        item.classList.remove("selected");
+                    });
+                    e.target.classList.add("selected");
+                    const eventId = e.target.dataset.id;
+                    eventInput.value = eventId;
+                    eventStep.classList.add("collapsed");
+                    dateStep.classList.remove("collapsed");
+                }
+            });
+            document.getElementById("date-continue").addEventListener("click", function() {
+                if (datePicker.value) {
+                    dateInput.value = datePicker.value;
+                    dateStep.classList.add("collapsed");
+                    showStep.classList.remove("collapsed");
+                    fetchShows(theatreInput.value, eventInput.value);
+                } else {
+                    alert("Please select a date");
+                }
+            });
+            function fetchShows(theatreId, eventId) {
+                fetch(`/book/get-shows/?theatre_id=${theatreId}&event_id=${eventId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        showContainer.innerHTML = '';
+                        data.shows.forEach(show => {
+                            showContainer.innerHTML += `
+                                <div class="selection-item show-item" data-id="${show.id}">
+                                    ${show.time}
+                                </div>
+                            `;
+                        });
+                    });
+            }
+            showContainer.addEventListener("click", function(e) {
+                if (e.target.classList.contains("show-item")) {
+                    document.querySelectorAll(".show-item.selected").forEach(item => {
+                        item.classList.remove("selected");
+                    });
+                    e.target.classList.add("selected");
+                    const showId = e.target.dataset.id;
+                    showInput.value = showId;
+                    showStep.classList.add("collapsed");
+                    tierStep.classList.remove("collapsed");
+                    fetchTiers(showId);
+                }
+            });
+            function fetchTiers(showId) {
+                fetch(`/book/get-tiers/?show_id=${showId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        tierContainer.innerHTML = '';
+                        data.tiers.forEach(tier => {
+                            tierContainer.innerHTML += `
+                                <div class="selection-item tier-item" data-id="${tier.id}">
+                                    ${tier.name}<br>₹${tier.price}
+                                </div>
+                            `;
+                        });
+                    });
+            }
+            tierContainer.addEventListener("click", function(e) {
+                if (e.target.classList.contains("tier-item")) {
+                    document.querySelectorAll(".tier-item.selected").forEach(item => {
+                        item.classList.remove("selected");
+                    });
+                    e.target.classList.add("selected");
+                    const tierId = e.target.dataset.id;
+                    tierInput.value = tierId;
+                    tierStep.classList.add("collapsed");
+                    seatStep.classList.remove("collapsed");
+                    fetchSeats(tierId);
+                }
+            });
+            function fetchSeats(tierId) {
+                const showId = showInput.value;
+                const selectedDate = dateInput.value;
+                if (!showId || !selectedDate) {
+                    console.error("Show ID or Date is missing");
+                    return;
+                }
+                fetch(`/book/get-seats/?tier_id=${tierId}&show_id=${showId}&date=${selectedDate}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        seatContainer.innerHTML = '';
+                        data.seats.forEach(seat => {
+                            seatContainer.innerHTML += `
+                                <div class="selection-item seat-item" data-id="${seat.id}">
+                                    ${seat.seat_number}
+                                </div>
+                            `;
+                        });
+                    })
+                    .catch(error => console.error("Error fetching seats:", error));
+            }
+            seatContainer.addEventListener("click", function(e) {
+                if (e.target.classList.contains("seat-item")) {
+                    document.querySelectorAll(".seat-item.selected").forEach(item => {
+                        item.classList.remove("selected");
+                    });
+                    e.target.classList.add("selected");
+                    const seatId = e.target.dataset.id;
+                    seatInput.value = seatId;
+                }
+            });
+            document.querySelectorAll('.back-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const targetStep = document.getElementById(this.dataset.target);
+                    document.querySelectorAll('.step-container').forEach(step => {
+                        step.classList.add('collapsed');
+                    });
+                    targetStep.classList.remove('collapsed');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
